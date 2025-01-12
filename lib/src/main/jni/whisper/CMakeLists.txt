@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(whisper.cpp)
 
 set(CMAKE_CXX_STANDARD 17)
-set(WHISPER_LIB_DIR ${CMAKE_SOURCE_DIR}/../../../../../../..)
+set(WHISPER_LIB_DIR ${CMAKE_SOURCE_DIR}/../../../../../whisper.cpp)
 
 # Path to external GGML, otherwise uses the copy in whisper.cpp.
 option(GGML_HOME "whisper: Path to external GGML source" OFF)
