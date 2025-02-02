@@ -52,6 +52,7 @@ class WhisperVoiceInputMethodService : InputMethodService() {
     override fun onDestroy() {
         super.onDestroy()
         whisperRecognition.onDestroy()
+        switchToPreviousInputMethod()
     }
 
     override fun onCreateInputView(): View? {
@@ -67,5 +68,11 @@ class WhisperVoiceInputMethodService : InputMethodService() {
         whisperRecognition.onStartListening(callbacks)
 
         return view
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        super.onFinishInputView(finishingInput)
+
+        switchToPreviousInputMethod()
     }
 }
