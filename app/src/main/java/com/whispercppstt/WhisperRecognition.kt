@@ -67,6 +67,7 @@ class WhisperRecognition(private val context: android.content.Context) {
                     { callback.endOfSpeech(); mediaPlayer?.start() },
                     { e: Exception -> callback.error(e) },
                     { audioData -> transcribeAndReturnResult(callback, audioData) },
+                    { }
                 )
             )
         } catch (e: Exception) {
