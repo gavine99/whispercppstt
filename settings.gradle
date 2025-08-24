@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 rootProject.name = "WhisperCppStt"
 include ':app'
 include ':lib'
+project(':lib').projectDir = new File(rootDir, 'whisper.cpp/examples/whisper.android/lib/')

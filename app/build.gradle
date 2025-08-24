@@ -47,7 +47,6 @@ android {
 }
 
 dependencies {
-    implementation project(':lib')
     implementation 'androidx.activity:activity-compose:1.7.2'
     implementation 'androidx.compose.material:material-icons-core:1.5.0'
     implementation 'androidx.compose.material3:material3:1.1.1'
@@ -62,4 +61,6 @@ dependencies {
     debugImplementation "androidx.compose.ui:ui-test-manifest:1.5.0"
 
     implementation 'com.github.gkonovalov.android-vad:silero:2.0.7'
+
+    implementation project(':lib')
 }
