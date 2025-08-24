@@ -24,8 +24,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
-import com.whispercppstt.ui.main.MainScreen
-import com.whispercppstt.ui.main.MainScreenViewModel
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainScreenViewModel by viewModels { MainScreenViewModel.factory() }
@@ -46,7 +44,7 @@ class MainActivity : ComponentActivity() {
         content: @Composable () -> Unit
     ) {
         val colorScheme = when {
-            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            dynamicColor -> {
                 val context = LocalContext.current
                 if (darkTheme)
                     dynamicDarkColorScheme(context)

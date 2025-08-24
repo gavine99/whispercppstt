@@ -1,4 +1,4 @@
-package com.whispercppstt.ui.main
+package com.whispercppstt
 
 import android.app.Application
 import androidx.compose.runtime.getValue
@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.whispercpp.whisper.WhisperContext
 import com.whispercpp.whisper.WhisperContext.Companion.createContextFromAsset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,7 +29,7 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
 
     private suspend fun printSystemInfo() {
         printMessage(
-            String.format("System Info: %s\n", com.whispercpp.whisper.WhisperContext.getSystemInfo())
+            String.format("System Info: %s\n", WhisperContext.getSystemInfo())
         )
     }
 
@@ -48,7 +49,7 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
 
         printMessage("loading model\n")
 
-        var whisperContext = createContextFromAsset(
+        val whisperContext = createContextFromAsset(
             application.assets,
             "models/ggml-tiny.en.bin"
         )

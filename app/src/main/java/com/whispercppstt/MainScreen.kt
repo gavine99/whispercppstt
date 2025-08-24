@@ -1,4 +1,4 @@
-package com.whispercppstt.ui.main
+package com.whispercppstt
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.whispercppstt.R
 
 @Composable
 fun MainScreen(viewModel: MainScreenViewModel) {

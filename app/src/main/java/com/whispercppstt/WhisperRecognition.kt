@@ -1,5 +1,6 @@
 package com.whispercppstt
 
+import android.content.AttributionSource
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.speech.SpeechRecognizer
@@ -33,19 +34,16 @@ class WhisperRecognition(private val context: android.content.Context) {
     fun onDestroy() {
         Log.d(TAG, "onDestroy()")
 
-        recorder.stopRecording()
+        recorder.stopRecording(Recorder.CANCEL)
 
         mediaPlayer?.release()
 
-        val tmpWhisperContext = whisperContext
-        whisperContext = null
-
         runBlocking {
-            tmpWhisperContext?.release()
+            whisperContext?.release()
         }
     }
 
-    fun onStartListening(callback: Callbacks) {
+    fun onStartListening(callingAttributionSource: AttributionSource?, callbacks: Callbacks) {
         Log.d(TAG, "onStartListening()")
 
         try {
@@ -60,38 +58,25 @@ class WhisperRecognition(private val context: android.content.Context) {
 
             recorder.startRecording(
                 context,
+                callingAttributionSource,
                 mutableListOf(),
                 Recorder.Callbacks(
-                    { callback.readyForSpeech(); mediaPlayer?.start() },
-                    { callback.beginningOfSpeech() },
-                    { callback.endOfSpeech(); mediaPlayer?.start() },
-                    { e: Exception -> callback.error(e) },
-                    { audioData -> transcribeAndReturnResult(callback, audioData) },
+                    { callbacks.readyForSpeech(); mediaPlayer?.start() },
+                    { callbacks.beginningOfSpeech() },
+                    { callbacks.endOfSpeech(); mediaPlayer?.start() },
+                    { e: Exception -> callbacks.error(e) },
+                    { audioData -> transcribeAndReturnResult(callbacks, audioData) },
                     { }
                 )
             )
         } catch (e: Exception) {
-            Log.e(TAG, e.message!!)
-            try {
-                callback.error(e)
-            } catch (e2: Exception) {
-                // nothing
-            }
+            callbacks.error(e)
         }
     }
 
-    fun onCancel(callback: Callbacks) {
+    fun onCancel() {
         Log.d(TAG, "onCancel()")
-
-        try {
-            recorder.stopRecording(Recorder.CANCEL)
-        } catch (e: Exception) {
-            Log.e(TAG, e.message!!)
-            try {
-                callback.error(e)
-            } catch (_: Exception) {
-            }
-        }
+        recorder.stopRecording(Recorder.CANCEL)
     }
 
     fun onStopListening() {
@@ -100,30 +85,30 @@ class WhisperRecognition(private val context: android.content.Context) {
     }
 
     private fun transcribeAndReturnResult(callback: Callbacks, audioData: FloatArray) {
-        try {
-            Log.d(TAG, "transcribeAndReturnResult()")
+        Log.d(TAG, "transcribeAndReturnResult()")
 
+        try {
             val resultArray = ArrayList<String>()
 
-            runBlocking {
-                resultArray.add(whisperContext!!.transcribeData(audioData, false))
-            }
+            if (audioData.isNotEmpty()) {
+                // whisper.cpp uses coroutines. create a coroutine scope
+                runBlocking {
+                    val result = whisperContext?.transcribeData(audioData, false)
+                    if (result != null)
+                        resultArray.add(result)
+                }
 
-            // replace special strings
-            val iterator = resultArray.listIterator()
-            while (iterator.hasNext())
-                iterator.set(performStringReplacements(iterator.next().trim()))
+                // replace special strings in place
+                val iterator = resultArray.listIterator()
+                while (iterator.hasNext())
+                    iterator.set(performStringReplacements(iterator.next().trim()))
+                }
 
-            val bundle = Bundle()
-            bundle.putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, resultArray)
-
-            callback.results(bundle)
+            callback.results(Bundle().apply {
+                putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, resultArray)
+            })
         } catch (e: Exception) {
-            Log.e(TAG, e.message!!)
-            try {
-                callback.error(e)
-            } catch (_: Exception) {
-            }
+            callback.error(e)
         }
     }
 

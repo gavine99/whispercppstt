@@ -35,7 +35,7 @@
         </activity>
 
         <activity
-            android:name=".ui.SpeechRecognizerActivity"
+            android:name=".SpeechRecognizerActivity"
             android:exported="true"
             android:theme="@style/Theme.WhisperCpp.Translucent">
 
@@ -119,7 +119,6 @@
             android:exported="true"
             android:foregroundServiceType="microphone"
             android:permission="android.permission.RECORD_AUDIO"
-            android:icon="@drawable/ic_service_trigger"
             android:label="@string/whispercpp_recognition_service">
 
             <intent-filter>

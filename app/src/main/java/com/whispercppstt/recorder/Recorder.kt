@@ -1,19 +1,20 @@
 package com.whispercppstt.recorder
 
 import android.annotation.SuppressLint
+import android.content.AttributionSource
 import android.content.Context
+import android.content.ContextParams
 import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
-
 import com.konovalov.vad.silero.VadSilero
 import com.konovalov.vad.silero.config.FrameSize
 import com.konovalov.vad.silero.config.Mode
 import com.konovalov.vad.silero.config.SampleRate
-
 import java.util.concurrent.atomic.AtomicInteger
+
 
 class Recorder {
     private var recorderThread: AudioRecordThread? = null
@@ -36,6 +37,7 @@ class Recorder {
     )
 
     fun startRecording(appContext: Context,
+                       callingAttributionSource: AttributionSource?,
                        audioData: MutableList<Float>,
                        callbacks: Callbacks) {
         Log.v(TAG, "startRecording()")
@@ -56,7 +58,12 @@ class Recorder {
                 override fun onConnecting(device: AudioDeviceInfo?) { /* nothing */ }
                 override fun onConnected(device: AudioDeviceInfo?) {
                     callbacks.preStopRecording = { bluetoothMicManager?.close() }
-                    recorderThread = AudioRecordThread(appContext, device, audioData, callbacks)
+                    recorderThread = AudioRecordThread(appContext,
+                        callingAttributionSource,
+                        device,
+                        audioData,
+                        callbacks
+                    )
                     recorderThread?.start()
                 }
                 override fun onDisconnected(device: AudioDeviceInfo?) {
@@ -69,26 +76,20 @@ class Recorder {
     }
 
     fun stopRecording(stopOrCancel: Int = STOP) {
+        Log.d(TAG, "stopRecording($stopOrCancel)")
+
         bluetoothMicManager?.close()
 
-        if (recorderThread !== null) {
-            Log.d(TAG, "stopRecording()")
-
-            val tmpRecorderThread = recorderThread
-            recorderThread = null
-
-            tmpRecorderThread?.stopRecording(stopOrCancel)
-            tmpRecorderThread?.join()
-        }
+        recorderThread?.stopRecording(stopOrCancel)
     }
 }
 
 private class AudioRecordThread(
     private val appContext: Context,
+    private val callingAttributionSource: AttributionSource?,
     private val audioDevice: AudioDeviceInfo?,
     private val audioData: MutableList<Float>,
-    private val callbacks: Recorder.Callbacks
-) : Thread("AudioRecorder") {
+    private val callbacks: Recorder.Callbacks) : Thread("AudioRecorder") {
     private var running = AtomicInteger(0)
 
     companion object {
@@ -126,16 +127,28 @@ private class AudioRecordThread(
                 throw java.lang.Exception("$VAD_BUFFER_MULTIPLIER x VAD buffer size is smaller than minimum recorder buffer size")
             }
 
-            val audioRecord = AudioRecord(
-                MediaRecorder.AudioSource.MIC,
-                16000,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT,
-                bufferSize
-            ).apply {
+            val audioRecord = AudioRecord.Builder().apply {
+                if (callingAttributionSource != null)
+                    setContext(
+                        appContext.createContext(
+                            ContextParams.Builder()
+                                .setNextAttributionSource(callingAttributionSource)
+                                .build()
+                        )
+                    )
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setAudioFormat(AudioFormat.Builder().apply {
+                    setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+                    setSampleRate(16000)
+                }.build())
+                setBufferSizeInBytes(bufferSize)
+            }.build().apply {
                 Log.d(TAG, "audio rec pref device: id ${audioDevice?.id}, type ${audioDevice?.type}")
                 preferredDevice = audioDevice
             }
+
+            var speechHasBeenDetected = false
 
             try {
                 if (audioRecord.state != AudioRecord.STATE_INITIALIZED)
@@ -144,8 +157,6 @@ private class AudioRecordThread(
                 running.set(0)
 
                 val readBuffer = ShortArray(bufferSize)
-
-                var detectedFirstSpeech = false
 
                 audioRecord.startRecording()
 
@@ -170,22 +181,21 @@ private class AudioRecordThread(
                         }
 
                         // if speech hasn't been detected yet
-                        if (!detectedFirstSpeech) {
+                        if (!speechHasBeenDetected) {
                             if (speechDetectedInBuffer) {
                                 Log.v(TAG, "vad: first speech detected")
-                                detectedFirstSpeech = true
+                                speechHasBeenDetected = true
                                 callbacks.beginningOfSpeech()
                             }
                         // else, first speech has been detected, check for lack of speech
                         } else if (!speechDetectedInBuffer) {
                             Log.v(TAG, "vad: no speech detected")
-                            callbacks.endOfSpeech()
                             break   // out of while loop that captures audio
                         }
 
                         for (i in 0 until read) {
                             // silero vad has a delay before detecting voice so we maintain a buffer of previously captured audio
-                            if (!detectedFirstSpeech) {
+                            if (!speechHasBeenDetected) {
                                 if (audioData.size >= PRE_VAD_BUFFER_LENGTH) {
                                     audioData.removeAt(0)
                                 }
@@ -197,16 +207,21 @@ private class AudioRecordThread(
                     callbacks.preStopRecording()
                     audioRecord.stop()
                 }
-
             } finally {
                 audioRecord.release()
+
+                // only call callbacks if not cancelled
+                if (running.get() != CANCEL) {
+                    if (speechHasBeenDetected)
+                        callbacks.endOfSpeech()
+                    else
+                        // no speech detected, clear the audio buffer
+                        audioData.clear()
+                    callbacks.completed(audioData.toFloatArray())
+                }
             }
         } catch (e: Exception) {
             callbacks.error(e)
-        }
-
-        if (running.get() != CANCEL) {
-            callbacks.completed(audioData.toFloatArray())
         }
     }
 

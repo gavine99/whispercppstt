@@ -1,10 +1,8 @@
 <resources>
     <string name="app_name">WhisperCpp STT</string>
-    <string name="recognized">Recognized: %1$s</string>
-    <string name="mic_permission_error">You must accept this permission to use the app</string>
     <string name="whispercpp_recognition_service">WhisperCpp Speech Recognition Service</string>
     <string name="whispercpp_voice_input_service">WhisperCpp Voice Input</string>
     <string name="run_benchmark">Run Benchmark</string>
-    <string name="loading">loading</string>
-    <string name="statusIcon">status icon</string>
+    <string name="microphone_desc">Microphone</string>
+    <string name="mic_panel_desc">Microphone panel</string>
 </resources>
